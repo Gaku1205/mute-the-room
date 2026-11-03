@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0B0E1A" />
+    <meta name="description" content="真夜中の部屋で鳴りだす音を、指で押さえて黙らせる。ただし子守唄と寝息だけは押しちゃダメ。" />
+    <meta property="og:title" content="mute-the-room｜鳴ったら、押さえろ。" />
+    <meta property="og:description" content="真夜中の部屋で鳴りだす音を、指で押さえて黙らせる。23:00 から 7:00 まで寝かせておけ。" />
+    <title>mute-the-room｜鳴ったら、押さえろ。</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #070912; overflow: hidden; overscroll-behavior: none; }
+      body { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
+        font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic", "Meiryo", system-ui, sans-serif; }
+      canvas { display: block; width: 100vw; height: 100dvh; touch-action: none; }
+      #ui { position: fixed; top: 0; pointer-events: none; }
+      #ui button { pointer-events: auto; font: inherit; cursor: pointer; touch-action: manipulation; }
+      #ui button:focus-visible { outline: 3px solid #FFE14D; outline-offset: 3px; }
+      .btn { position: absolute; left: 22px; right: 22px; height: 56px; border-radius: 28px; font-weight: 800 !important; font-size: 17px !important;
+        letter-spacing: 0.08em; border: 0; transition: transform 0.12s ease; }
+      .btn:active { transform: scale(0.96); }
+      .primary { background: #FFE14D; color: #0B0E1A; box-shadow: 0 0 0 1px rgba(255,225,77,0.3), 0 10px 40px rgba(255,225,77,0.25); }
+      .ghost { background: rgba(11,14,26,0.85); color: #F3F5FF; border: 2px solid #F3F5FF; }
+      #start { bottom: calc(26px + env(safe-area-inset-bottom)); }
+      #again { bottom: calc(26px + env(safe-area-inset-bottom)); right: calc(50% + 6px); }
+      #share { bottom: calc(26px + env(safe-area-inset-bottom)); left: calc(50% + 6px); }
+      #mute { position: absolute; top: 14px; right: 14px; width: 44px; height: 44px; border-radius: 22px; border: 1.5px solid rgba(243,245,255,0.35);
+        background: rgba(11,14,26,0.6); color: #F3F5FF; display: grid; place-items: center; padding: 0; }
+      #mute svg { width: 20px; height: 20px; }
+      #toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); background: #F3F5FF; color: #0B0E1A; font-weight: 700;
+        font-size: 14px; padding: 10px 16px; border-radius: 20px; opacity: 0; transition: opacity 0.2s; white-space: nowrap; }
+      #toast.on { opacity: 1; }
+      [hidden] { display: none !important; }
+      @media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:active { transform: none; } }
+    </style>
+  </head>
+  <body>
+    <canvas id="game" aria-label="ゲームの画面"></canvas>
+    <div id="ui">
+      <button id="mute" type="button" aria-label="音を消す" aria-pressed="false"></button>
+      <button id="start" class="btn primary" type="button">夜をはじめる</button>
+      <button id="again" class="btn primary" type="button" hidden>もう一度</button>
+      <button id="share" class="btn ghost" type="button" hidden>結果を共有</button>
+      <div id="toast" role="status" aria-live="polite"></div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
