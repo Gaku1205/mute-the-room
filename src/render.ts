@@ -110,6 +110,8 @@ export function hitRadius(ctx: CanvasRenderingContext2D, L: Layout, snd: Sound):
 export interface Fx {
   reduced: boolean;
   showKeys: boolean;
+  /** ゲームパッドがつながっている間、キー文字の代わりに出すボタン名（キー文字 → 名前） */
+  padLabels?: Record<string, string>;
   time: number;
 }
 
@@ -403,7 +405,7 @@ export function drawSound(ctx: CanvasRenderingContext2D, L: Layout, snd: Sound, 
     ctx.stroke();
     font(ctx, 700, 14, MONO);
     ctx.fillStyle = k.color;
-    ctx.fillText(snd.key, kx, ky + 1);
+    ctx.fillText(fx.padLabels?.[snd.key] ?? snd.key, kx, ky + 1);
   }
   ctx.restore();
 }

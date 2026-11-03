@@ -1,6 +1,7 @@
 import * as audio from "./audio";
 import { dailyLabel, dailySeed } from "./lib/daily";
 import { FINALE, KEYS, NIGHT, createGame, press, release, shareText, step, summarize, type Game, type Sound, type Summary } from "./lib/game";
+import { buttonToKey, diffButtons, mergeButtons, padLabelMap } from "./lib/gamepad";
 import { KINDS } from "./lib/kinds";
 import { SHARE_FILE_NAME, SHARE_H, SHARE_SAVED_MESSAGE, SHARE_SCALE, SHARE_W, buildShareData, pickShareMode } from "./lib/share";
 import {
@@ -63,6 +64,10 @@ let combo = 0;
 let paused = false;
 const pointers = new Map<number, { id: number; x: number; y: number }>();
 const keysDown = new Map<string, number>();
+/** ゲームパッド：前回のボタンの状態（つながっていなければ null）と、つながっているか */
+let padPrev: boolean[] | null = null;
+let padConnected = false;
+const PAD_LABELS_MAP = padLabelMap();
 
 // ---- 画面の大きさ ----
 function resize(): void {
@@ -303,25 +308,73 @@ window.addEventListener("keydown", (e) => {
     startGame(dailyOf !== null);
     return;
   }
-  if (scene !== "play" || e.repeat || !KEYS.includes(k)) return;
+  if (scene !== "play" || e.repeat) return;
+  pressKey(k);
+});
+window.addEventListener("keyup", (e) => releaseKey(e.key.toUpperCase()));
+window.addEventListener("blur", () => releaseAllKeys());
+
+/** キー（A S D F …）で音を押さえる。キーボードもゲームパッドもここを通る */
+function pressKey(k: string): void {
+  if (!KEYS.includes(k)) return;
   paused = false;
   const s = game.sounds.find((v) => v.state === "live" && v.key === k);
   if (!s) return;
   keysDown.set(k, s.id);
   doPress(s);
-});
-window.addEventListener("keyup", (e) => {
-  const k = e.key.toUpperCase();
+}
+function releaseKey(k: string): void {
   const id = keysDown.get(k);
   if (id !== undefined) {
     release(game, id);
     keysDown.delete(k);
   }
-});
-window.addEventListener("blur", () => {
+}
+function releaseAllKeys(): void {
   for (const id of keysDown.values()) release(game, id);
   keysDown.clear();
-});
+}
+
+// ---- ゲームパッド（標準配置のボタン 0〜8 を KEYS の順に割り当てる） ----
+window.addEventListener("gamepaddisconnected", () => pollGamepad());
+window.addEventListener("gamepadconnected", () => pollGamepad());
+
+function pollGamepad(): void {
+  let now: boolean[] | null = null;
+  try {
+    if (typeof navigator.getGamepads === "function") now = mergeButtons(Array.from(navigator.getGamepads()));
+  } catch {
+    now = null;
+  }
+  if (!now) {
+    // 抜かれた：押さえている音を離す
+    if (padPrev) releaseAllKeys();
+    padPrev = null;
+    padConnected = false;
+    return;
+  }
+  padConnected = true;
+  // つないだ直後は、押しっぱなしのボタンを「押した」と数えない
+  const prev = padPrev ?? now;
+  padPrev = now;
+  const { pressed, released } = diffButtons(prev, now);
+  for (const b of released) {
+    const k = buttonToKey(b);
+    if (k) releaseKey(k);
+  }
+  if (pressed.length === 0) return;
+  audio.unlock();
+  if (scene === "title") {
+    startGame(false);
+  } else if (scene === "result") {
+    startGame(dailyOf !== null);
+  } else if (scene === "play") {
+    for (const b of pressed) {
+      const k = buttonToKey(b);
+      if (k) pressKey(k);
+    }
+  }
+}
 
 // ---- できごと（音・光・揺れ） ----
 function burst(x: number, y: number, color: string, n: number): void {
@@ -492,6 +545,7 @@ let last = performance.now();
 function frame(now: number): void {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  pollGamepad();
   time += dt;
   sceneTime += dt;
 
@@ -513,7 +567,7 @@ function frame(now: number): void {
   }
   particles = particles.filter((p) => p.life > 0);
 
-  const fx: Fx = { reduced, showKeys, time };
+  const fx: Fx = { reduced, showKeys: showKeys || padConnected, padLabels: padConnected ? PAD_LABELS_MAP : undefined, time };
   const noise = scene === "play" ? game.noise : 0;
   const dawn = scene === "play" && game.phase !== "play" && game.outcome !== "woke" ? Math.min(1, game.finaleT / 1 + 0.3) : scene === "result" && summary?.outcome === "clear" ? 1 : 0;
 
