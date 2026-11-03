@@ -21,6 +21,7 @@
       .btn:active { transform: scale(0.96); }
       .primary { background: #FFE14D; color: #0B0E1A; box-shadow: 0 0 0 1px rgba(255,225,77,0.3), 0 10px 40px rgba(255,225,77,0.25); }
       .ghost { background: rgba(11,14,26,0.85); color: #F3F5FF; border: 2px solid #F3F5FF; }
+      #daily { bottom: calc(26px + 68px + env(safe-area-inset-bottom)); }
       #start { bottom: calc(26px + env(safe-area-inset-bottom)); }
       #again { bottom: calc(26px + env(safe-area-inset-bottom)); right: calc(50% + 6px); }
       #share { bottom: calc(26px + env(safe-area-inset-bottom)); left: calc(50% + 6px); }
@@ -39,6 +40,7 @@
     <div id="ui">
       <button id="mute" type="button" aria-label="音を消す" aria-pressed="false"></button>
       <button id="start" class="btn primary" type="button">夜をはじめる</button>
+      <button id="daily" class="btn ghost" type="button"></button>
       <button id="again" class="btn primary" type="button" hidden>もう一度</button>
       <button id="share" class="btn ghost" type="button" hidden>結果を共有</button>
       <div id="toast" role="status" aria-live="polite"></div>

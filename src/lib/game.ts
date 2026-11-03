@@ -339,6 +339,8 @@ export interface Summary {
   score: number;
   title: string;
   headline: string;
+  /** 「今夜のお題」で遊んだ回だけ、日付（例：11/3） */
+  daily?: string;
 }
 
 export function titleFor(outcome: Outcome, endT: number, mistakes: number, sleep: number): string {
@@ -361,7 +363,7 @@ export function headlineFor(outcome: Outcome): string {
   return "に起きちゃった";
 }
 
-export function summarize(g: Game): Summary {
+export function summarize(g: Game, daily?: string): Summary {
   const outcome = g.outcome ?? "woke";
   const endT = outcome === "woke" ? g.endT : NIGHT;
   return {
@@ -373,12 +375,14 @@ export function summarize(g: Game): Summary {
     score: g.score,
     title: titleFor(outcome, endT, g.mistakes, g.sleep),
     headline: headlineFor(outcome),
+    ...(daily ? { daily } : {}),
   };
 }
 
 export function shareText(s: Summary, url: string): string {
   return [
     `🤫 mute-the-room`,
+    ...(s.daily ? [`今夜のお題 ${s.daily}`] : []),
     `${s.time} ${s.headline}`,
     `黙らせた音 ${s.muted}｜シーン ${s.silences}回｜押しちゃった ${s.mistakes}`,
     `称号「${s.title}」`,
