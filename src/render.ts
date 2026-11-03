@@ -695,7 +695,7 @@ export function drawTitle(ctx: CanvasRenderingContext2D, L: Layout): void {
 /** タイトルの、遊び方の2行 */
 export function drawRules(ctx: CanvasRenderingContext2D, L: Layout): void {
   const cx = L.ox + L.sw / 2;
-  const y = L.btnTop - 50 * L.s;
+  const y = L.btnTop - (50 + 68) * L.s;
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
@@ -744,6 +744,12 @@ export function drawResult(ctx: CanvasRenderingContext2D, L: Layout, sum: Summar
   font(ctx, 800, 20 * s);
   ctx.fillStyle = C.ink;
   ctx.fillText(sum.headline, L.ox + pad, 188 * s);
+  if (sum.daily) {
+    spacing(ctx, "0.1em");
+    font(ctx, 700, 14, JP);
+    ctx.fillStyle = C.sub;
+    ctx.fillText(`今夜のお題 ${sum.daily}`, L.ox + pad, 212 * s);
+  }
   ctx.globalAlpha = 1;
 
   // 称号の帯（斜め。縁に音の色が並ぶ）

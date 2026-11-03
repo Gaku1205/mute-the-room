@@ -1,4 +1,5 @@
 import * as audio from "./audio";
+import { dailyLabel, dailySeed } from "./lib/daily";
 import { FINALE, KEYS, NIGHT, createGame, press, release, shareText, step, summarize, type Game, type Sound, type Summary } from "./lib/game";
 import { KINDS } from "./lib/kinds";
 import {
@@ -28,11 +29,12 @@ import {
 const canvas = document.querySelector<HTMLCanvasElement>("#game");
 const ui = document.querySelector<HTMLDivElement>("#ui");
 const btnStart = document.querySelector<HTMLButtonElement>("#start");
+const btnDaily = document.querySelector<HTMLButtonElement>("#daily");
 const btnAgain = document.querySelector<HTMLButtonElement>("#again");
 const btnShare = document.querySelector<HTMLButtonElement>("#share");
 const btnMute = document.querySelector<HTMLButtonElement>("#mute");
 const toast = document.querySelector<HTMLDivElement>("#toast");
-if (!canvas || !ui || !btnStart || !btnAgain || !btnShare || !btnMute || !toast) throw new Error("画面の部品がありません");
+if (!canvas || !ui || !btnStart || !btnDaily || !btnAgain || !btnShare || !btnMute || !toast) throw new Error("画面の部品がありません");
 const ctxOrNull = canvas.getContext("2d");
 if (!ctxOrNull) throw new Error("2D の描画が使えません");
 const ctx: CanvasRenderingContext2D = ctxOrNull;
@@ -44,6 +46,8 @@ type Scene = "title" | "play" | "result";
 let scene: Scene = "title";
 let game: Game = createGame(Date.now() >>> 0);
 let summary: Summary | null = null;
+/** 今の夜が「今夜のお題」ならその日付（11/3）。ランダムなら null */
+let dailyOf: string | null = null;
 let resultLog: number[] = [];
 let sceneTime = 0;
 let time = 0;
@@ -70,6 +74,7 @@ function resize(): void {
   ui!.style.width = `${L.sw}px`;
   ui!.style.height = `${L.sh}px`;
   for (const b of [btnStart, btnAgain, btnShare]) b!.style.bottom = `${L.btnGap}px`;
+  btnDaily!.style.bottom = `${L.btnGap + 56 + 12}px`;
 }
 window.addEventListener("resize", resize);
 resize();
@@ -96,15 +101,24 @@ function show(s: Scene): void {
   scene = s;
   sceneTime = 0;
   btnStart!.hidden = s !== "title";
+  btnDaily!.hidden = s !== "title";
   btnAgain!.hidden = s !== "result";
   btnShare!.hidden = s !== "result";
 }
 
-function startGame(): void {
+function refreshDaily(): void {
+  btnDaily!.textContent = `今夜のお題 ${dailyLabel(new Date())}`;
+}
+refreshDaily();
+
+/** daily が true なら今日（日本時間）のお題、false ならランダムな夜で始める */
+function startGame(daily = false): void {
   audio.unlock();
   audio.stopAll();
   audio.sfxStart();
-  game = createGame((Date.now() ^ (Math.random() * 1e9)) >>> 0);
+  const now = new Date();
+  dailyOf = daily ? dailyLabel(now) : null;
+  game = createGame(daily ? dailySeed(now) : (Date.now() ^ (Math.random() * 1e9)) >>> 0);
   particles = [];
   pointers.clear();
   keysDown.clear();
@@ -117,14 +131,15 @@ function startGame(): void {
 }
 
 function toResult(): void {
-  summary = summarize(game);
+  summary = summarize(game, dailyOf ?? undefined);
   resultLog = game.noiseLog.slice();
   show("result");
   btnAgain!.focus({ preventScroll: true });
 }
 
-btnStart.addEventListener("click", startGame);
-btnAgain.addEventListener("click", startGame);
+btnStart.addEventListener("click", () => startGame(false));
+btnDaily.addEventListener("click", () => startGame(true));
+btnAgain.addEventListener("click", () => startGame(dailyOf !== null));
 btnShare.addEventListener("click", () => {
   if (!summary) return;
   const url = location.origin + location.pathname;
@@ -216,13 +231,13 @@ window.addEventListener("keydown", (e) => {
     toggleMute();
     return;
   }
-  if (scene === "title" && (e.key === "Enter" || e.key === " ") && document.activeElement !== btnStart) {
+  if (scene === "title" && (e.key === "Enter" || e.key === " ") && document.activeElement !== btnStart && document.activeElement !== btnDaily) {
     e.preventDefault();
-    startGame();
+    startGame(false);
     return;
   }
   if (scene === "result" && k === "R") {
-    startGame();
+    startGame(dailyOf !== null);
     return;
   }
   if (scene !== "play" || e.repeat || !KEYS.includes(k)) return;
@@ -368,6 +383,7 @@ if (want === "play") {
 } else if (want === "result") {
   const outcome = params.get("end");
   game = outcome === "clear" ? botNight(11, 999) : botNight(7, 40);
+  if (params.get("daily")) dailyOf = dailyLabel(new Date());
   if (outcome === "clear" && game.outcome !== "clear") game.outcome = "clear";
   toResult();
   sceneTime = 5;
@@ -378,7 +394,7 @@ if (want === "play") {
 // ---- 描く ----
 function titleDemo(): void {
   const cyc = time % 3;
-  const alarm = demoSound(101, "alarm", 0.32, 0.36, Math.min(1, 0.45 + cyc * 0.4));
+  const alarm = demoSound(101, "alarm", 0.32, 0.33, Math.min(1, 0.45 + cyc * 0.4));
   if (cyc > 0.9 && cyc < 1.7) {
     alarm.holders = 1;
     alarm.loud = 0.81;
@@ -388,7 +404,7 @@ function titleDemo(): void {
     alarm.since = cyc - 1.7;
   }
   const fx: Fx = { reduced, showKeys: false, time };
-  const sounds = [alarm, demoSound(102, "dog", 0.74, 0.53, 0.55), demoSound(103, "lullaby", 0.28, 0.6, 0.5)];
+  const sounds = [alarm, demoSound(102, "dog", 0.74, 0.44, 0.55), demoSound(103, "lullaby", 0.28, 0.52, 0.5)];
   for (const s of sounds) drawSound(ctx, L, s, fx);
   if (alarm.holders > 0) {
     const p = placeOf(ctx, L, alarm);
