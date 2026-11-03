@@ -1,6 +1,7 @@
 import * as audio from "./audio";
 import { FINALE, KEYS, NIGHT, createGame, press, release, shareText, step, summarize, type Game, type Sound, type Summary } from "./lib/game";
 import { KINDS } from "./lib/kinds";
+import { SHARE_FILE_NAME, SHARE_H, SHARE_SAVED_MESSAGE, SHARE_SCALE, SHARE_W, buildShareData, pickShareMode } from "./lib/share";
 import {
   C,
   drawBackground,
@@ -125,10 +126,34 @@ function toResult(): void {
 
 btnStart.addEventListener("click", startGame);
 btnAgain.addEventListener("click", startGame);
-btnShare.addEventListener("click", () => {
-  if (!summary) return;
-  const url = location.origin + location.pathname;
-  const text = shareText(summary, url);
+/** 結果の1枚を、画面の大きさに関係なく固定の大きさ（780×1400）で PNG にする */
+function renderResultImage(sum: Summary, log: number[]): Promise<Blob | null> {
+  try {
+    const off = document.createElement("canvas");
+    off.width = SHARE_W * SHARE_SCALE;
+    off.height = SHARE_H * SHARE_SCALE;
+    const c = off.getContext("2d");
+    if (!c) return Promise.resolve(null);
+    c.scale(SHARE_SCALE, SHARE_SCALE);
+    const SL = layout(SHARE_W, SHARE_H);
+    const fx: Fx = { reduced: true, showKeys: false, time: 0 };
+    const mood: Mood = sum.outcome === "clear" ? "happy" : sum.outcome === "oversleep" ? "sleep" : "awake";
+    drawBackground(c, SL, 0, sum.outcome === "clear" ? 1 : 0, fx);
+    drawResult(c, SL, sum, log, 99, fx);
+    drawSleeper(c, SL, mood, sum.outcome === "woke" ? 0 : 100, fx, 0.9);
+    return new Promise((resolve) => {
+      try {
+        off.toBlob((b) => resolve(b), "image/png");
+      } catch {
+        resolve(null);
+      }
+    });
+  } catch {
+    return Promise.resolve(null);
+  }
+}
+
+function shareTextOnly(text: string): void {
   if (navigator.share) {
     navigator.share({ text }).catch(() => undefined);
   } else {
@@ -137,6 +162,44 @@ btnShare.addEventListener("click", () => {
       .then(() => showToast("結果をコピーしました"))
       .catch(() => showToast("コピーできませんでした"));
   }
+}
+
+function downloadImage(blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = SHARE_FILE_NAME;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+  showToast(SHARE_SAVED_MESSAGE);
+}
+
+let sharing = false;
+btnShare.addEventListener("click", () => {
+  if (!summary || sharing) return;
+  sharing = true;
+  const text = shareText(summary, location.origin + location.pathname);
+  renderResultImage(summary, resultLog)
+    .then((blob) => {
+      if (!blob) {
+        shareTextOnly(text);
+        return undefined;
+      }
+      const file = new File([blob], SHARE_FILE_NAME, { type: "image/png" });
+      const canShare = typeof navigator.canShare === "function" ? (d: { files: File[] }) => navigator.canShare(d) : undefined;
+      const data = buildShareData(text, file, canShare);
+      if (pickShareMode(true, data) === "share-file" && navigator.share) {
+        return navigator.share(data).catch(() => undefined);
+      }
+      downloadImage(blob);
+      return undefined;
+    })
+    .catch(() => shareTextOnly(text))
+    .finally(() => {
+      sharing = false;
+    });
 });
 let toastTimer = 0;
 function showToast(msg: string): void {
