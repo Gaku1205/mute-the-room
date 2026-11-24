@@ -687,7 +687,7 @@ export function drawTitle(ctx: CanvasRenderingContext2D, L: Layout): void {
   ctx.fillText("鳴ったら、", cx, 128 * L.s);
   ctx.fillText("押さえろ。", cx, 192 * L.s);
   spacing(ctx, "0.06em");
-  font(ctx, 500, 15 * L.s);
+  font(ctx, 500, Math.max(14, 15 * L.s));
   ctx.fillStyle = C.sub;
   ctx.fillText("23:00 から 7:00 まで、寝かせておけ。", cx, 230 * L.s);
   ctx.restore();
@@ -702,7 +702,7 @@ export function drawRules(ctx: CanvasRenderingContext2D, L: Layout): void {
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   spacing(ctx, "0.04em");
-  font(ctx, 700, 15 * L.s);
+  font(ctx, 700, Math.max(14, 15 * L.s));
   ctx.fillStyle = C.ink;
   ctx.fillText("うるさい音は、指で押さえ続けて止める", cx, y);
   ctx.fillStyle = C.moon;
